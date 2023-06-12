@@ -15,7 +15,7 @@ void *handleClient(void *);
 
 vector<string> videoList = {
     "drone.mp4",
-    "test.mov",
+    "test.mp4",
     "drone.mp4"
 };
 
