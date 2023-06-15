@@ -138,6 +138,13 @@ int main(int argc, char** argv)
         // Display the received image
         cv::imshow("CV Video Client", img);
 
+        char ack = 'A';
+        if (send(sokt, &ack, sizeof(ack), 0) < 0) {
+            cerr << "Failed to send acknowledgement" << endl;
+            close(sokt);
+            return 1;
+        }
+
         if (key = cv::waitKey(10) >= 0)
             break;
     }

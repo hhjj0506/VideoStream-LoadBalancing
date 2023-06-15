@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <vector>
+#include <chrono>
 
 using namespace cv;
 using namespace std;
@@ -85,6 +86,19 @@ void *handleClient(void* socketPtr)
 {
     int socket = *(int*)socketPtr;
 
+    // Measure network speed
+    // int checkSpeed = 0;
+    // auto start = chrono::high_resolution_clock::now();
+    // if (send(socket, &checkSpeed, sizeof(checkSpeed), 0) < 0) {
+    //     cerr << "Failed to send socket for checking network speed" << endl;
+    //     close(socket);
+    //     pthread_exit(NULL);
+    // }
+    // auto end = chrono::high_resolution_clock::now();
+    // auto duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
+    // float networkSpeed = (float)videoListSize / (1024 * 1024) / (duration / 1000.0);
+    // cout << "Network speed: " << networkSpeed << " Mbps" << endl;
+
     // Send video list size to the client
     int videoListSize = 0;
     for (const auto& video : videoList) {
@@ -153,11 +167,24 @@ void *handleClient(void* socketPtr)
         imgSize = imgGray.total() * imgGray.elemSize();
 
         // Send the processed image
+        auto start = chrono::high_resolution_clock::now();
         if ((bytes = send(socket, imgGray.data, imgSize, 0)) < 0)
         {
             std::cerr << "bytes = " << bytes << std::endl;
             break;
         }
+
+        char ack;
+        if (recv(socket, &ack, sizeof(ack), 0) < 0) {
+            cerr << "Failed to receive acknowledgement" << endl;
+        }
+        auto end = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
+        float networkSpeed = ((float)imgSize / (1024.0 * 1024.0)) / (duration / 1000.0);
+        if (isinf(networkSpeed)) {
+            networkSpeed = 0.0; // Set a default value
+        }
+        cout << "Network speed: " << networkSpeed << " Mbps" << endl;
     }
 
     //--------------------------------------------------------
