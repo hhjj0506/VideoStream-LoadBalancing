@@ -13,6 +13,7 @@ using namespace cv;
 using namespace std;
 
 void *handleClient(void *);
+void color_depth_reduction(Mat &image, int num);
 
 vector<string> videoList = {
     "drone.mp4",
@@ -138,6 +139,7 @@ void *handleClient(void* socketPtr)
     int bytes = 0;
     int key;
     int check = 1;
+    int blurDuration = 0;
     vector<float> speedList;
     float ave = 0.0;
     float networkSpeed = 0.0;
@@ -155,13 +157,17 @@ void *handleClient(void* socketPtr)
         // Convert the frame to grayscale
         cvtColor(img, imgGray, COLOR_BGR2GRAY);
         if (ave != 0.0 && networkSpeed < ave) {
-            GaussianBlur(imgGray, imgGray, Size(15, 15), 0);
+            //GaussianBlur(imgGray, imgGray, Size(15, 15), 0);
+            color_depth_reduction(imgGray, 64);
+            blurDuration = 5;
+        } else if (blurDuration > 0) {
+            color_depth_reduction(imgGray, 64);
+            //GaussianBlur(imgGray, imgGray, Size(15, 15), 0);
+            blurDuration--;
         }
 
         // Prepare the image data to be sent
         imgSize = imgGray.total() * imgGray.elemSize();
-
-        cout << imgSize << endl;
 
         // Send the processed image
         auto start = chrono::high_resolution_clock::now();
@@ -205,4 +211,26 @@ void *handleClient(void* socketPtr)
     cap.release();
     close(socket);
     pthread_exit(NULL);
+}
+
+void color_depth_reduction(Mat &image, int num) {
+    int h = image.rows;
+    int w = image.cols;
+
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            if (image.channels() == 1) {
+                uchar data = image.at<uchar>(y, x);
+                data = data/num*num + num/2;
+                image.at<uchar>(y,x) = data;
+            }
+            else if (image.channels() == 3) {
+                Vec3b colVal = image.at<Vec3b>(y, x);
+                colVal[2] = colVal[2]/num*num + num/2;
+                colVal[1] = colVal[1]/num*num + num/2;
+                colVal[0] = colVal[0]/num*num + num/2;
+                image.at<Vec3b>(y,x) = colVal;
+            }
+        }
+    }
 }
