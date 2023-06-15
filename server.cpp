@@ -86,19 +86,6 @@ void *handleClient(void* socketPtr)
 {
     int socket = *(int*)socketPtr;
 
-    // Measure network speed
-    // int checkSpeed = 0;
-    // auto start = chrono::high_resolution_clock::now();
-    // if (send(socket, &checkSpeed, sizeof(checkSpeed), 0) < 0) {
-    //     cerr << "Failed to send socket for checking network speed" << endl;
-    //     close(socket);
-    //     pthread_exit(NULL);
-    // }
-    // auto end = chrono::high_resolution_clock::now();
-    // auto duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
-    // float networkSpeed = (float)videoListSize / (1024 * 1024) / (duration / 1000.0);
-    // cout << "Network speed: " << networkSpeed << " Mbps" << endl;
-
     // Send video list size to the client
     int videoListSize = 0;
     for (const auto& video : videoList) {
@@ -150,27 +137,37 @@ void *handleClient(void* socketPtr)
     int imgSize;
     int bytes = 0;
     int key;
+    int check = 1;
+    vector<float> speedList;
+    float ave = 0.0;
+    float networkSpeed = 0.0;
+    int i = 0;
 
     while (1)
     {
         // Get a frame from the video
         if (!cap.read(img))
         {
-            std::cerr << "Failed to read frame from video" << std::endl;
+            cerr << "Failed to read frame from video" << endl;
             break;
         }
 
         // Convert the frame to grayscale
         cvtColor(img, imgGray, COLOR_BGR2GRAY);
+        if (ave != 0.0 && networkSpeed < ave) {
+            GaussianBlur(imgGray, imgGray, Size(15, 15), 0);
+        }
 
         // Prepare the image data to be sent
         imgSize = imgGray.total() * imgGray.elemSize();
+
+        cout << imgSize << endl;
 
         // Send the processed image
         auto start = chrono::high_resolution_clock::now();
         if ((bytes = send(socket, imgGray.data, imgSize, 0)) < 0)
         {
-            std::cerr << "bytes = " << bytes << std::endl;
+            std::cerr << "bytes = " << bytes << endl;
             break;
         }
 
@@ -180,10 +177,25 @@ void *handleClient(void* socketPtr)
         }
         auto end = chrono::high_resolution_clock::now();
         auto duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
-        float networkSpeed = ((float)imgSize / (1024.0 * 1024.0)) / (duration / 1000.0);
+        networkSpeed = ((float)imgSize / (1024.0 * 1024.0)) / (duration / 1000.0);
         if (isinf(networkSpeed)) {
             networkSpeed = 0.0; // Set a default value
         }
+
+        if (i < 30) {
+            speedList.push_back(networkSpeed);
+            i++;
+        }
+
+        if (i >= 29 && check == 1) {
+            float sum = 0.0f;
+            for (float num : speedList) {
+                sum += num;
+            }
+            ave = sum / speedList.size();
+            check = 0;
+        }
+
         cout << "Network speed: " << networkSpeed << " Mbps" << endl;
     }
 

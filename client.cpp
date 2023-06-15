@@ -13,7 +13,7 @@ int main(int argc, char** argv)
     //--------------------------------------------------------
     // Networking stuff: socket, connect
     //--------------------------------------------------------
-    int sokt;
+    int sock;
     char* serverIP;
     int serverPort;
 
@@ -28,7 +28,7 @@ int main(int argc, char** argv)
     struct sockaddr_in serverAddr;
     socklen_t addrLen = sizeof(struct sockaddr_in);
 
-    if ((sokt = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((sock = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
         cerr << "socket() failed" << endl;
         return 1;
     }
@@ -37,7 +37,7 @@ int main(int argc, char** argv)
     serverAddr.sin_addr.s_addr = inet_addr(serverIP);
     serverAddr.sin_port = htons(serverPort);
 
-    if (connect(sokt, (sockaddr*)&serverAddr, addrLen) < 0) {
+    if (connect(sock, (sockaddr*)&serverAddr, addrLen) < 0) {
         cerr << "connect() failed!" << endl;
         return 1;
     }
@@ -46,9 +46,9 @@ int main(int argc, char** argv)
     // Receive video list size from server
     //--------------------------------------------------------
     int videoListSize;
-    if (recv(sokt, &videoListSize, sizeof(videoListSize), 0) < 0) {
+    if (recv(sock, &videoListSize, sizeof(videoListSize), 0) < 0) {
         cerr << "Failed to receive video list size" << endl;
-        close(sokt);
+        close(sock);
         return 1;
     }
 
@@ -60,7 +60,7 @@ int main(int argc, char** argv)
     int bytesRead = 0;
 
     while (bytesRead < videoListSize) {
-        int bytesReceived = recv(sokt, buffer + bytesRead, videoListSize - bytesRead, 0);
+        int bytesReceived = recv(sock, buffer + bytesRead, videoListSize - bytesRead, 0);
         if (bytesReceived <= 0) {
             cerr << "Failed to receive video list" << endl;
             break;
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 
     if (videoList.empty()) {
         cerr << "No videos available" << endl;
-        close(sokt);
+        close(sock);
         return 1;
     }
 
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
 
     if (chosenVideo < 1 || chosenVideo > videoList.size()) {
         cerr << "Invalid video number" << endl;
-        close(sokt);
+        close(sock);
         return 1;
     }
 
@@ -107,9 +107,9 @@ int main(int argc, char** argv)
     //--------------------------------------------------------
     string chosenVideoName = videoList[chosenVideo - 1];
     cout << chosenVideoName << endl;
-    if (send(sokt, chosenVideoName.c_str(), chosenVideoName.length(), 0) < 0) {
+    if (send(sock, chosenVideoName.c_str(), chosenVideoName.length(), 0) < 0) {
         cerr << "Failed to send chosen video request" << endl;
-        close(sokt);
+        close(sock);
         return 1;
     }
 
@@ -129,7 +129,7 @@ int main(int argc, char** argv)
         imgSize = 720 * 1280 * sizeof(uchar);
         img = Mat(720, 1280, CV_8UC1);
 
-        if ((bytes = recv(sokt, img.data, imgSize, MSG_WAITALL)) == -1)
+        if ((bytes = recv(sock, img.data, imgSize, MSG_WAITALL)) == -1)
         {
             std::cerr << "recv failed, received bytes = " << bytes << std::endl;
             break;
@@ -139,9 +139,9 @@ int main(int argc, char** argv)
         cv::imshow("CV Video Client", img);
 
         char ack = 'A';
-        if (send(sokt, &ack, sizeof(ack), 0) < 0) {
+        if (send(sock, &ack, sizeof(ack), 0) < 0) {
             cerr << "Failed to send acknowledgement" << endl;
-            close(sokt);
+            close(sock);
             return 1;
         }
 
@@ -149,7 +149,7 @@ int main(int argc, char** argv)
             break;
     }
 
-    close(sokt);
+    close(sock);
 
     return 0;
 
