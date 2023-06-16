@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     int serverPort;
 
     if (argc < 3) {
-        cerr << "Usage: cv_video_cli <serverIP> <serverPort>" << endl;
+        cerr << "Usage: client <serverIP> <serverPort>" << endl;
         return 1;
     }
 
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
 
         if ((bytes = recv(sock, img.data, imgSize, MSG_WAITALL)) == -1)
         {
-            std::cerr << "recv failed, received bytes = " << bytes << std::endl;
+            cerr << "recv failed, received bytes = " << bytes << endl;
             break;
         }
 

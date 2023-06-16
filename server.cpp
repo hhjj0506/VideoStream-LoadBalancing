@@ -47,13 +47,13 @@ int main(int argc, char** argv)
     if (argc == 2)
         port = atoi(argv[1]);
 
-    localSocket = socket(AF_INET, SOCK_STREAM, 0);
+    localSocket = socket(PF_INET, SOCK_STREAM, 0);
     if (localSocket == -1) {
         perror("socket() call failed!!");
         exit(1);
     }
 
-    localAddr.sin_family = AF_INET;
+    localAddr.sin_family = PF_INET;
     localAddr.sin_addr.s_addr = INADDR_ANY;
     localAddr.sin_port = htons(port);
 
