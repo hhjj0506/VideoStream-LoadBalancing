@@ -72,14 +72,18 @@ int main(int argc, char** argv)
         remoteSocket = accept(localSocket, (struct sockaddr*)&remoteAddr, (socklen_t*)&addrLen);
         if (remoteSocket < 0) {
             perror("accept failed!");
-            exit(1);
+            continue; // Skip to the next iteration of the loop
         }
 
         cout << "Connection accepted" << endl;
-        pthread_create(&thread_id, NULL, handleClient, (void*)&remoteSocket);
+        if(pthread_create(&thread_id, NULL, handleClient, (void*)&remoteSocket) < 0) {
+            perror("pthread_create failed");
+            continue; // Skip to the next iteration of the loop
+        };
         pthread_detach(thread_id);
     }
 
+    close(localSocket);
     return 0;
 }
 
@@ -161,7 +165,7 @@ void *handleClient(void* socketPtr)
             color_depth_reduction(imgGray, 64);
             blurDuration = 5;
         } else if (blurDuration > 0) {
-            color_depth_reduction(imgGray, 64);
+            //color_depth_reduction(imgGray, 64);
             //GaussianBlur(imgGray, imgGray, Size(15, 15), 0);
             blurDuration--;
         }
@@ -173,13 +177,14 @@ void *handleClient(void* socketPtr)
         auto start = chrono::high_resolution_clock::now();
         if ((bytes = send(socket, imgGray.data, imgSize, 0)) < 0)
         {
-            std::cerr << "bytes = " << bytes << endl;
+            cerr << "bytes = " << bytes << endl;
             break;
         }
 
         char ack;
         if (recv(socket, &ack, sizeof(ack), 0) < 0) {
             cerr << "Failed to receive acknowledgement" << endl;
+            break;
         }
         auto end = chrono::high_resolution_clock::now();
         auto duration = chrono::duration_cast<chrono::milliseconds>(end - start).count();
@@ -202,12 +207,10 @@ void *handleClient(void* socketPtr)
             check = 0;
         }
 
-        cout << "Network speed: " << networkSpeed << " Mbps" << endl;
+        cout << "Network speed: " << networkSpeed << " MB/s" << endl;
     }
 
-    //--------------------------------------------------------
-    // Cleanup and close client connection
-    //--------------------------------------------------------
+    // Release the video capture and close the socket
     cap.release();
     close(socket);
     pthread_exit(NULL);
